@@ -1,0 +1,39 @@
+name: Sync math folders from TensorTonic
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # daily at 6am UTC
+  workflow_dispatch:        # manual trigger from Actions tab
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout ml-math-from-scratch
+        uses: actions/checkout@v4
+
+      - name: Clone TensorTonic solutions
+        run: git clone --depth 1 https://github.com/byteofyash/TensorTonic-Solutions.git tensortonic-tmp
+
+      - name: Copy only math folders
+        run: |
+          mkdir -p study-plans
+          for folder in math-linear-algebra math-probability math-calculus math-optimization; do
+            if [ -d "tensortonic-tmp/study-plans/$folder" ]; then
+              rm -rf "study-plans/$folder"
+              cp -r "tensortonic-tmp/study-plans/$folder" "study-plans/$folder"
+            fi
+          done
+          rm -rf tensortonic-tmp
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add study-plans
+          if git diff --staged --quiet; then
+            echo "No changes to sync"
+          else
+            git commit -m "Auto-sync math folders from TensorTonic"
+            git push
+          fi
